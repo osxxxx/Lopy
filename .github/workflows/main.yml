@@ -16,13 +16,13 @@ jobs:
 
     - name: Create FRP Config
       run: |
-        echo [common] > ./frp/frpc.ini
-        echo server_addr = <YOUR_FRP_SERVER_ADDRESS> >> ./frp/frpc.ini
-        echo server_port = <YOUR_FRP_SERVER_PORT> >> ./frp/frpc.ini
-        echo [rdp] >> ./frp/frpc.ini
-        echo type = tcp >> ./frp/frpc.ini
-        echo local_port = 3389 >> ./frp/frpc.ini
-        echo remote_port = <YOUR_PUBLIC_PORT> >> ./frp/frpc.ini
+        Set-Content -Path ./frp/frpc.ini -Value "[common]"
+        Add-Content -Path ./frp/frpc.ini -Value "server_addr = YOUR_FRP_SERVER_ADDRESS"
+        Add-Content -Path ./frp/frpc.ini -Value "server_port = YOUR_FRP_SERVER_PORT"
+        Add-Content -Path ./frp/frpc.ini -Value "[rdp]"
+        Add-Content -Path ./frp/frpc.ini -Value "type = tcp"
+        Add-Content -Path ./frp/frpc.ini -Value "local_port = 3389"
+        Add-Content -Path ./frp/frpc.ini -Value "remote_port = YOUR_PUBLIC_PORT"
 
     - name: Run FRP Client
       run: Start-Process -NoNewWindow -FilePath .\frp\frpc.exe -ArgumentList '-c ./frp/frpc.ini' -PassThru | Out-Null
