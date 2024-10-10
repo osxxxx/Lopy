@@ -8,11 +8,15 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Install Node.js and LocalTunnel
-      uses: actions/setup-node@v3
-      with:
-        node-version: '14'
-    - run: npm install -g localtunnel
+    - name: Download Playit.gg Client
+      run: |
+        Invoke-WebRequest https://playit-cloud-client-assets.s3.amazonaws.com/playit-client-win.exe -OutFile playit-client.exe
+
+    - name: Install and Configure Playit.gg Tunnel
+      run: |
+        Start-Process -NoNewWindow -FilePath "playit-client.exe" -ArgumentList "service install"
+        Start-Sleep -Seconds 5
+        Start-Process -NoNewWindow -FilePath "playit-client.exe" -ArgumentList "service start"
 
     - name: Enable Remote Desktop
       run: |
@@ -25,11 +29,6 @@ jobs:
         $user = "runneradmin"
         $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
         Set-LocalUser -Name $user -Password $password
-
-    - name: Run LocalTunnel and Display URL
-      run: |
-        $output = & node -e "require('child_process').exec('lt --port 3389', (error, stdout, stderr) => { if (error) throw error; console.log(stdout); });"
-        Write-Host "Your LocalTunnel URL: $output"
 
     - name: Keep Tunnel Alive
       run: Start-Sleep -Seconds 86400  # Keep the tunnel alive for 24 hours
