@@ -4,57 +4,34 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
+
     runs-on: windows-latest
-    timeout-minutes: 4320  # Set timeout to maximum limit of 72 hours
 
     steps:
-    - name: Download ngrok
-      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
-      
-    - name: Extract ngrok
-      run: Expand-Archive ngrok.zip
-      
-    - name: Authenticate ngrok
-      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
-      env:
-        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
-        
-    - name: Enable Remote Desktop Connections
+    - name: Install Node.js and LocalTunnel
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+    - run: npm install -g localtunnel
+
+    - name: Enable Remote Desktop
       run: |
-        # Enable RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        
-        # Configure RDP session settings for 24 hours
-        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxIdleTime" -Value 86400000  # 24 hours in milliseconds
-        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxConnectionTime" -Value 86400000  # 24 hours in milliseconds
-        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxDisconnectionTime" -Value 86400000  # 24 hours in milliseconds
-        
-        # Set RDP session limit settings for no timeouts
-        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxIdleTime" -Value 86400000  # 24 hours in milliseconds
-        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxConnectionTime" -Value 86400000  # 24 hours in milliseconds
-        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxDisconnectionTime" -Value 86400000  # 24 hours in milliseconds
-        
-        # Allow User Authentication for RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
-        
-        # Keep RDP alive
-        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\"
-        if (-not (Test-Path $regPath)) {
-            New-Item -Path $regPath -Force
-        }
-        Set-ItemProperty -Path $regPath -Name "KeepAlive" -Value 1
 
-    - name: Set Desktop Background to Pink
+    - name: Set Local User Password
       run: |
-        # Set the desktop background color to pink
-        $pinkColor = "#FF69B4"  # Hex code for hot pink
-        Set-ItemProperty -Path 'HKCU:\Control Panel\Colors' -Name "Background" -Value $pinkColor
-        # Refresh the desktop to apply the new background color
-        rundll32.exe user32.dll,UpdatePerUserSystemParameters
+        $user = "runneradmin"
+        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
+        Set-LocalUser -Name $user -Password $password
 
-    - name: Set Admin Password
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+    - name: Run LocalTunnel and Capture URL
+      run: |
+        $tunnel = Start-Process -NoNewWindow -FilePath "node" -ArgumentList "-e `"require('child_process').exec('lt --port 3389', (error, stdout, stderr) => { if (error) throw error; console.log(stdout); });`"" -PassThru -RedirectStandardOutput "tunnel_output.txt"
+        Start-Sleep -Seconds 5
+        $url = Get-Content "tunnel_output.txt"
+        Write-Host "Your LocalTunnel URL: $url"
 
-    - name: Create ngrok Tunnel for Remote Desktop
-      run: .\ngrok\ngrok.exe tcp 3389
+    - name: Keep Tunnel Alive
+      run: Start-Sleep -Seconds 86400  # Keep the tunnel alive for 24 hours
