@@ -14,6 +14,9 @@ jobs:
     - name: Extract FRP
       run: Expand-Archive -Path frp.zip -DestinationPath ./frp
 
+    - name: Verify FRP Files
+      run: Get-ChildItem -Path ./frp  # List extracted files to verify that frpc.exe exists
+
     - name: Create FRP Config
       run: |
         Set-Content -Path ./frp/frpc.ini -Value "[common]"
@@ -25,7 +28,7 @@ jobs:
         Add-Content -Path ./frp/frpc.ini -Value "remote_port = YOUR_PUBLIC_PORT"
 
     - name: Run FRP Client
-      run: Start-Process -NoNewWindow -FilePath .\frp\frpc.exe -ArgumentList '-c ./frp/frpc.ini' -PassThru | Out-Null
+      run: Start-Process -NoNewWindow -FilePath "$PWD/frp/frpc.exe" -ArgumentList '-c $PWD/frp/frpc.ini' -PassThru | Out-Null
 
     - name: Keep-Alive Loop
       run: |
