@@ -1,26 +1,46 @@
-name: CI
+name: Setup Windows RDP with ngrok
 
-on: [push, workflow_dispatch]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  build:
-
+  setup-rdp:
     runs-on: windows-latest
 
     steps:
-    - name: Download AnyDesk
-      run: Invoke-WebRequest https://download.anydesk.com/AnyDesk.exe -OutFile AnyDesk.exe
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Install AnyDesk
-      run: Start-Process -FilePath AnyDesk.exe -ArgumentList "/S" -Wait
+      - name: Enable Remote Desktop
+        run: |
+          # Enable RDP
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+          # Update registry to allow RDP connections
+          Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 0
 
-    - name: Start AnyDesk
-      run: Start-Process "C:\Program Files (x86)\AnyDesk\AnyDesk.exe"
+      - name: Start RDP Service
+        run: |
+          Start-Service TermService
 
-    - name: Get AnyDesk ID
-      run: |
-        # Wait for AnyDesk to start
-        Start-Sleep -Seconds 5
-        # Get the AnyDesk ID
-        $anyDeskID = (Get-Content "C:\ProgramData\AnyDesk\ad.cache" | Select-String -Pattern "Identity" | ForEach-Object { $_ -replace '.*?Identity: ', '' })
-        Write-Host "AnyDesk ID: $anyDeskID"
+      - name: Install ngrok
+        run: |
+          Invoke-WebRequest -Uri "https://bin.equinox.io/c/111111/ngrok-stable-windows-amd64.zip" -OutFile ngrok.zip
+          Expand-Archive -Path ngrok.zip -DestinationPath .\ngrok
+          Remove-Item ngrok.zip
+
+      - name: Start ngrok
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  # Set your ngrok auth token in GitHub Secrets
+        run: |
+          .\ngrok\ngrok.exe authtoken $NGROK_AUTH_TOKEN
+          Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp 3389" 
+          
+      - name: Output ngrok Info
+        run: |
+          # Wait for ngrok to establish a connection
+          Start-Sleep -Seconds 10
+          # Retrieve the public ngrok URL
+          $ngrokInfo = Invoke-RestMethod http://localhost:4040/api/tunnels
+          Write-Host "RDP is accessible at: $($ngrokInfo.tunnels[0].public_url)"
