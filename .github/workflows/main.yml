@@ -4,8 +4,8 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: windows-latest
-    timeout-minutes: 360  # Maximum timeout allowed (6 hours)
+    runs-on: windows-2022
+    timeout-minutes: 360
 
     steps:
     - name: Download Ngrok
@@ -31,8 +31,8 @@ jobs:
     - name: Set Admin Password
       run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-    - name: Create Ngrok Tunnel (Run in Background)
-      run: Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList 'tcp 3389'
+    - name: Start Ngrok in Background
+      run: Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList 'tcp 3389' -PassThru | Out-Null
 
     - name: Keep-Alive Loop
       run: |
