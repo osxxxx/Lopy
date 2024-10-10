@@ -27,8 +27,11 @@ jobs:
     - name: Setup ngrok
       run: |
         .\ngrok\ngrok.exe config add-authtoken 2V4ZVr5efWMydD5SRyvxg48Q73t_25NK2LtPxxtDFsMxQzjv6
-        .\ngrok\ngrok.exe tcp 3389
 
-    - name: Start RDP
+    - name: Start ngrok tunnel for RDP
       run: |
-        Start-Service TermService
+        Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp 3389 --timeout 21600" 
+        # Wait for ngrok to initialize
+        Start-Sleep -Seconds 5
+        # Output the ngrok status
+        Get-Content .\ngrok\ngrok.log -Wait
