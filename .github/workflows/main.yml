@@ -1,43 +1,41 @@
-name: Keep ngrok Alive
+name: Setup RDP
 
-on:
-  push:
-    branches:
-      - main
+on: [push]
 
 jobs:
-  keep-ngrok-alive:
+  setup-rdp:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Download ngrok
-        run: Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
+    - name: Enable RDP
+      run: |
+        $username = "moha"
+        $password = "qpqp112233@1"
+        $secpasswd = ConvertTo-SecureString $password -AsPlainText -Force
+        New-LocalUser -Name $username -Password $secpasswd -FullName "RDP User" -Description "User for Remote Desktop access"
+        Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
 
-      - name: Unzip ngrok
-        run: Expand-Archive -Path ngrok.zip -DestinationPath .\ngrok
+    - name: Start RDP Service
+      run: Start-Service TermService
 
-      - name: Add ngrok Auth Token
-        run: .\ngrok\ngrok.exe config add-authtoken 2V4ZVr5efWMydD5SRyvxg48Q73t_25NK2LtPxxtDFsMxQzjv6
+    - name: Download ngrok
+      run: Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
 
-      - name: Keep ngrok Alive
-        run: |
-          $ngrokPath = ".\ngrok\ngrok.exe"
-          $port = 3389
+    - name: Unzip ngrok
+      run: Expand-Archive ngrok.zip -DestinationPath .\ngrok
 
-          function Start-Ngrok {
-              Start-Process -NoNewWindow -FilePath $ngrokPath -ArgumentList "tcp $port"
-          }
+    - name: Add ngrok auth token
+      run: .\ngrok\ngrok.exe config add-authtoken 2V4ZVr5efWMydD5SRyvxg48Q73t_25NK2LtPxxtDFsMxQzjv6
 
-          Start-Ngrok
-          Start-Sleep -Seconds 21600
+    - name: Start ngrok for RDP
+      run: Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp 3389 --timeout 21600"
 
-          while ($true) {
-              $ngrokProcess = Get-Process ngrok -ErrorAction SilentlyContinue
-              if (-not $ngrokProcess) {
-                  Start-Ngrok
-              }
-              Start-Sleep -Seconds 21600
-          }
+    - name: Keep ngrok alive
+      run: |
+        while ($true) {
+          Start-Sleep -Seconds 600 # Sleep for 10 minutes
+        }
+
