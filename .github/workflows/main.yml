@@ -31,7 +31,7 @@ jobs:
         run: |
           Start-Service TermService
 
-      - name: Install ngrok
+      - name: Download and extract ngrok
         run: |
           # Download and extract ngrok
           Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
@@ -40,7 +40,7 @@ jobs:
 
       - name: Start ngrok
         env:
-          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  # Ensure this secret is set
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}  # Reference the secret
         run: |
           # Check if the NGROK_AUTH_TOKEN is set
           if (-not $env:NGROK_AUTH_TOKEN) {
