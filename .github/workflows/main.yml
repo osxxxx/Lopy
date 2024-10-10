@@ -26,13 +26,10 @@ jobs:
         $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
         Set-LocalUser -Name $user -Password $password
 
-    - name: Run LocalTunnel and Capture URL
+    - name: Run LocalTunnel and Display URL
       run: |
-        $tunnel = Start-Process -NoNewWindow -FilePath "node" -ArgumentList "-e `"require('child_process').exec('lt --port 3389', (error, stdout, stderr) => { if (error) throw error; console.log(stdout); });`"" -PassThru -RedirectStandardOutput "tunnel_output.txt"
-        Start-Sleep -Seconds 5
-        $url = Get-Content "tunnel_output.txt"
-        Write-Host "Your LocalTunnel URL: $url"
-        cat tunnel_output.txt  # Ensure URL is displayed
+        $output = & node -e "require('child_process').exec('lt --port 3389', (error, stdout, stderr) => { if (error) throw error; console.log(stdout); });"
+        Write-Host "Your LocalTunnel URL: $output"
 
     - name: Keep Tunnel Alive
       run: Start-Sleep -Seconds 86400  # Keep the tunnel alive for 24 hours
