@@ -1,37 +1,43 @@
-name: Setup RDP
+name: Keep ngrok Alive
 
-on: [push]
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  setup-rdp:
+  keep-ngrok-alive:
     runs-on: windows-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
-    - name: Enable RDP
-      run: |
-        $username = "moha"
-        $password = "qpqp112233@1"
-        New-LocalUser -Name $username -Password (ConvertTo-SecureString $password -AsPlainText -Force) -FullName "RDP User" -Description "User for Remote Desktop access"
-        Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
-        Start-Service TermService
+      - name: Download ngrok
+        run: Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
 
-    - name: Download ngrok
-      run: |
-        Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
-        Expand-Archive -Path ngrok.zip -DestinationPath .\ngrok
-        Remove-Item ngrok.zip
+      - name: Unzip ngrok
+        run: Expand-Archive -Path ngrok.zip -DestinationPath .\ngrok
 
-    - name: Setup ngrok
-      run: |
-        .\ngrok\ngrok.exe config add-authtoken 2V4ZVr5efWMydD5SRyvxg48Q73t_25NK2LtPxxtDFsMxQzjv6
+      - name: Add ngrok Auth Token
+        run: .\ngrok\ngrok.exe config add-authtoken 2V4ZVr5efWMydD5SRyvxg48Q73t_25NK2LtPxxtDFsMxQzjv6
 
-    - name: Start ngrok tunnel for RDP
-      run: |
-        Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList "tcp 3389 --timeout 21600" 
-        # Wait for ngrok to initialize
-        Start-Sleep -Seconds 5
-        # Output the ngrok status
-        Get-Content .\ngrok\ngrok.log -Wait
+      - name: Keep ngrok Alive
+        run: |
+          $ngrokPath = ".\ngrok\ngrok.exe"
+          $port = 3389
+
+          function Start-Ngrok {
+              Start-Process -NoNewWindow -FilePath $ngrokPath -ArgumentList "tcp $port"
+          }
+
+          Start-Ngrok
+          Start-Sleep -Seconds 21600
+
+          while ($true) {
+              $ngrokProcess = Get-Process ngrok -ErrorAction SilentlyContinue
+              if (-not $ngrokProcess) {
+                  Start-Ngrok
+              }
+              Start-Sleep -Seconds 21600
+          }
