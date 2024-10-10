@@ -5,30 +5,35 @@ on: [push, workflow_dispatch]
 jobs:
   build:
     runs-on: windows-2022
-    timeout-minutes: 360
+    timeout-minutes: 360  # Maximum timeout allowed by GitHub Actions
 
     steps:
-    - name: Download FRP
-      run: Invoke-WebRequest -Uri https://github.com/fatedier/frp/releases/download/v0.43.0/frp_0.43.0_windows_amd64.zip -OutFile frp.zip
+    - name: Enable Terminal Services
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
-    - name: Extract FRP
-      run: Expand-Archive -Path frp.zip -DestinationPath ./frp
+    - name: Enable Firewall Rule for RDP
+      run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: Verify FRP Files
-      run: Get-ChildItem -Path ./frp  # List extracted files to verify that frpc.exe exists
+    - name: Enable RDP User Authentication
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
 
-    - name: Create FRP Config
-      run: |
-        Set-Content -Path ./frp/frpc.ini -Value "[common]"
-        Add-Content -Path ./frp/frpc.ini -Value "server_addr = YOUR_FRP_SERVER_ADDRESS"
-        Add-Content -Path ./frp/frpc.ini -Value "server_port = YOUR_FRP_SERVER_PORT"
-        Add-Content -Path ./frp/frpc.ini -Value "[rdp]"
-        Add-Content -Path ./frp/frpc.ini -Value "type = tcp"
-        Add-Content -Path ./frp/frpc.ini -Value "local_port = 3389"
-        Add-Content -Path ./frp/frpc.ini -Value "remote_port = YOUR_PUBLIC_PORT"
+    - name: Set Admin Password
+      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-    - name: Run FRP Client
-      run: Start-Process -NoNewWindow -FilePath "$PWD/frp/frpc.exe" -ArgumentList '-c $PWD/frp/frpc.ini' -PassThru | Out-Null
+    - name: Install OpenSSH Server
+      run: Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+
+    - name: Start OpenSSH Server
+      run: Start-Service sshd
+
+    - name: Set SSH Service to Start on Boot
+      run: Set-Service -Name sshd -StartupType 'Automatic'
+
+    - name: Allow SSH in Firewall
+      run: New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+
+    - name: Display SSH Information
+      run: hostname
 
     - name: Keep-Alive Loop
       run: |
