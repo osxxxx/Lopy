@@ -4,7 +4,6 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-
     runs-on: windows-latest
     timeout-minutes: 4320  # Set timeout to maximum limit of 72 hours
 
@@ -22,12 +21,58 @@ jobs:
         
     - name: Enable Remote Desktop Connections
       run: |
+        # Enable RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        
+        # Configure RDP session settings for 24 hours
+        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxIdleTime" -Value 86400000  # 24 hours in milliseconds
+        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxConnectionTime" -Value 86400000  # 24 hours in milliseconds
+        Set-ItemProperty -Path 'HKLM:\Software\Policies\Microsoft\Windows NT\Terminal Services' -Name "MaxDisconnectionTime" -Value 86400000  # 24 hours in milliseconds
+        
+        # Set RDP session limit settings for no timeouts
+        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxIdleTime" -Value 86400000  # 24 hours in milliseconds
+        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxConnectionTime" -Value 86400000  # 24 hours in milliseconds
+        Set-ItemProperty -Path 'HKLM:\Software\Microsoft\Windows NT\CurrentVersion\Terminal Server' -Name "MaxDisconnectionTime" -Value 86400000  # 24 hours in milliseconds
+        
+        # Allow User Authentication for RDP
         Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
         
+        # Keep RDP alive
+        $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Terminal Server\"
+        if (-not (Test-Path $regPath)) {
+            New-Item -Path $regPath -Force
+        }
+        Set-ItemProperty -Path $regPath -Name "KeepAlive" -Value 1
+
+    - name: Set Desktop Background to Pink
+      run: |
+        # Set the desktop background color to pink
+        $pinkColor = "#FF69B4"  # Hex code for hot pink
+        Set-ItemProperty -Path 'HKCU:\Control Panel\Colors' -Name "Background" -Value $pinkColor
+        # Refresh the desktop to apply the new background color
+        rundll32.exe user32.dll,UpdatePerUserSystemParameters
+
+    - name: Install Discord
+      run: |
+        # Download the Discord installer
+        Invoke-WebRequest -Uri "https://discord.com/api/download?platform=win" -OutFile "DiscordSetup.exe"
+        # Run the installer silently
+        Start-Process -FilePath "DiscordSetup.exe" -ArgumentList "/S" -Wait
+        # Optional: Clean up the installer
+        Remove-Item "DiscordSetup.exe"
+
+    - name: Install Voicemod
+      run: |
+        # Download the Voicemod installer
+        Invoke-WebRequest -Uri "https://dl.voicemod.net/windows/VoicemodSetup.exe" -OutFile "VoicemodSetup.exe"
+        # Run the installer silently
+        Start-Process -FilePath "VoicemodSetup.exe" -ArgumentList "/S" -Wait
+        # Optional: Clean up the installer
+        Remove-Item "VoicemodSetup.exe"
+
     - name: Set Admin Password
       run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-      
+
     - name: Create ngrok Tunnel for Remote Desktop
       run: .\ngrok\ngrok.exe tcp 3389
