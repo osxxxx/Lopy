@@ -53,24 +53,6 @@ jobs:
         # Refresh the desktop to apply the new background color
         rundll32.exe user32.dll,UpdatePerUserSystemParameters
 
-    - name: Install Discord
-      run: |
-        # Download the Discord installer
-        Invoke-WebRequest -Uri "https://discord.com/api/download?platform=win" -OutFile "DiscordSetup.exe"
-        # Run the installer silently
-        Start-Process -FilePath "DiscordSetup.exe" -ArgumentList "/S" -Wait
-        # Optional: Clean up the installer
-        Remove-Item "DiscordSetup.exe"
-
-    - name: Install Voicemod
-      run: |
-        # Download the Voicemod installer
-        Invoke-WebRequest -Uri "https://dl.voicemod.net/windows/VoicemodSetup.exe" -OutFile "VoicemodSetup.exe"
-        # Run the installer silently
-        Start-Process -FilePath "VoicemodSetup.exe" -ArgumentList "/S" -Wait
-        # Optional: Clean up the installer
-        Remove-Item "VoicemodSetup.exe"
-
     - name: Set Admin Password
       run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
