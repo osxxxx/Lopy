@@ -10,7 +10,7 @@ jobs:
     steps:
     - name: Download Playit.gg Client
       run: |
-        Invoke-WebRequest https://playit-cloud-client-assets.s3.amazonaws.com/playit-client-win.exe -OutFile playit-client.exe
+        Invoke-WebRequest https://playit.gg/downloads/playit-client.exe -OutFile playit-client.exe
 
     - name: Install and Configure Playit.gg Tunnel
       run: |
