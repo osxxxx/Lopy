@@ -4,31 +4,40 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-
     runs-on: windows-latest
+    timeout-minutes: 360  # Maximum timeout allowed (6 hours)
 
     steps:
-    - name: Download Playit.gg Client
-      run: |
-        Invoke-WebRequest https://playit.gg/downloads/playit-client.exe -OutFile playit-client.exe
+    - name: Download Ngrok
+      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
 
-    - name: Install and Configure Playit.gg Tunnel
-      run: |
-        Start-Process -NoNewWindow -FilePath "playit-client.exe" -ArgumentList "service install"
-        Start-Sleep -Seconds 5
-        Start-Process -NoNewWindow -FilePath "playit-client.exe" -ArgumentList "service start"
+    - name: Extract Ngrok
+      run: Expand-Archive ngrok.zip
 
-    - name: Enable Remote Desktop
-      run: |
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+    - name: Ngrok Auth
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-    - name: Set Local User Password
-      run: |
-        $user = "runneradmin"
-        $password = ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force
-        Set-LocalUser -Name $user -Password $password
+    - name: Enable Terminal Services
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
 
-    - name: Keep Tunnel Alive
-      run: Start-Sleep -Seconds 86400  # Keep the tunnel alive for 24 hours
+    - name: Enable Firewall Rule for RDP
+      run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+    - name: Enable RDP User Authentication
+      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+
+    - name: Set Admin Password
+      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
+
+    - name: Create Ngrok Tunnel (Run in Background)
+      run: Start-Process -NoNewWindow -FilePath .\ngrok\ngrok.exe -ArgumentList 'tcp 3389'
+
+    - name: Keep-Alive Loop
+      run: |
+        echo "Keeping the session alive for 24 hours..."
+        for ((i=0;i<1440;i++)); do
+          echo "Still alive... $i minutes passed"
+          sleep 60
+        done
