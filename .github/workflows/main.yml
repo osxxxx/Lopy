@@ -4,41 +4,23 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: windows-2022
-    timeout-minutes: 360  # Maximum timeout allowed by GitHub Actions
+
+    runs-on: windows-latest
 
     steps:
-    - name: Enable Terminal Services
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+    - name: Download AnyDesk
+      run: Invoke-WebRequest https://download.anydesk.com/AnyDesk.exe -OutFile AnyDesk.exe
 
-    - name: Enable Firewall Rule for RDP
-      run: Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+    - name: Install AnyDesk
+      run: Start-Process -FilePath AnyDesk.exe -ArgumentList "/S" -Wait
 
-    - name: Enable RDP User Authentication
-      run: Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -Name "UserAuthentication" -Value 1
+    - name: Start AnyDesk
+      run: Start-Process "C:\Program Files (x86)\AnyDesk\AnyDesk.exe"
 
-    - name: Set Admin Password
-      run: Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
-
-    - name: Install OpenSSH Server
-      run: Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-
-    - name: Start OpenSSH Server
-      run: Start-Service sshd
-
-    - name: Set SSH Service to Start on Boot
-      run: Set-Service -Name sshd -StartupType 'Automatic'
-
-    - name: Allow SSH in Firewall
-      run: New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
-
-    - name: Display SSH Information
-      run: hostname
-
-    - name: Keep-Alive Loop
+    - name: Get AnyDesk ID
       run: |
-        $minutes = 0
-        while ($minutes -lt 1440) {
-          Write-Host "Still alive... $minutes minutes passed"
-          Start-Sleep -Seconds 60
-          $minutes++
+        # Wait for AnyDesk to start
+        Start-Sleep -Seconds 5
+        # Get the AnyDesk ID
+        $anyDeskID = (Get-Content "C:\ProgramData\AnyDesk\ad.cache" | Select-String -Pattern "Identity" | ForEach-Object { $_ -replace '.*?Identity: ', '' })
+        Write-Host "AnyDesk ID: $anyDeskID"
