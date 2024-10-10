@@ -32,6 +32,7 @@ jobs:
         Start-Sleep -Seconds 5
         $url = Get-Content "tunnel_output.txt"
         Write-Host "Your LocalTunnel URL: $url"
+        cat tunnel_output.txt  # Ensure URL is displayed
 
     - name: Keep Tunnel Alive
       run: Start-Sleep -Seconds 86400  # Keep the tunnel alive for 24 hours
