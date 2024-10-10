@@ -36,8 +36,9 @@ jobs:
 
     - name: Keep-Alive Loop
       run: |
-        echo "Keeping the session alive for 24 hours..."
-        for ((i=0;i<1440;i++)); do
-          echo "Still alive... $i minutes passed"
-          sleep 60
-        done
+        $minutes = 0
+        while ($minutes -lt 1440) {
+          Write-Host "Still alive... $minutes minutes passed"
+          Start-Sleep -Seconds 60
+          $minutes++
+        }
