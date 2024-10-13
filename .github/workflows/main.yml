@@ -14,12 +14,14 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Enable RDP User
+        id: enable_rdp
         run: |
           $username = "moha"
           $password = "qpqp112233@1"
           $secpasswd = ConvertTo-SecureString $password -AsPlainText -Force
           New-LocalUser -Name $username -Password $secpasswd -FullName "RDP User" -Description "User for Remote Desktop access"
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member $username
+          Write-Host "RDP User Password: $password"
 
       - name: Download ngrok
         run: Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
@@ -40,12 +42,12 @@ jobs:
           }
 
           Start-Ngrok
-          Start-Sleep -Seconds 21600
 
-          while ($true) {
+          $endTime = (Get-Date).AddHours(10)
+          while ((Get-Date) -lt $endTime) {
+              Start-Sleep -Seconds 3600  # Sleep for 1 hour
               $ngrokProcess = Get-Process ngrok -ErrorAction SilentlyContinue
               if (-not $ngrokProcess) {
                   Start-Ngrok
               }
-              Start-Sleep -Seconds 21600
           }
